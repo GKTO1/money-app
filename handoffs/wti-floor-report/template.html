@@ -1,0 +1,454 @@
+<title>Closed-Straits WTI Floor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: verdict first (headline, lede, floor tiles), then the Brent chart, then the evidence in a 68ch reading column; chart and tables break out to the full 1040px. */
+:root{
+  --paper:#edf1f0;       /* page ground: chart-paper grey with a sea-green bias */
+  --surface:#fbfcfc;     /* cards and chart surface */
+  --ink:#0f1c27;         /* primary text: deep navy */
+  --ink-2:#43515d;       /* secondary text */
+  --muted:#6c7984;       /* captions, axis */
+  --rule:#d5dde0;        /* hairlines */
+  --grid:#e4e9eb;        /* chart gridlines */
+  --accent:#a8236a;      /* nautical-chart magenta: floors and chokepoints */
+  --accent-ink:#a8236a;  /* accent used as text */
+  --accent-soft:#f6e6ef; /* forward-window wash */
+  --series-1:#2a78d6;    /* Brent */
+  --series-2:#eb6834;    /* full-closure floor */
+  --flush:#6c7984;       /* flush-low line */
+  --up:#0b6e0b;
+  --down:#b3322f;
+  --display:"Archivo","Arial Narrow","Helvetica Neue",system-ui,sans-serif;
+  --ui:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0b1216;--surface:#121b21;--ink:#e6edf1;--ink-2:#b3c0c9;--muted:#8794a0;--rule:#27353e;--grid:#1c2830;
+  --accent:#c757a6;--accent-ink:#e59ccc;--accent-soft:#2a1826;--series-1:#3987e5;--series-2:#d95926;--flush:#8794a0;
+  --up:#4cc24c;--down:#f08079;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0b1216;--surface:#121b21;--ink:#e6edf1;--ink-2:#b3c0c9;--muted:#8794a0;--rule:#27353e;--grid:#1c2830;
+  --accent:#c757a6;--accent-ink:#e59ccc;--accent-soft:#2a1826;--series-1:#3987e5;--series-2:#d95926;--flush:#8794a0;
+  --up:#4cc24c;--down:#f08079;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:17px/1.62 var(--body);-webkit-font-smoothing:antialiased}
+a{color:var(--accent-ink);text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:32px 72px;display:flex;flex-direction:column;gap:48px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+h1{font-weight:800;font-stretch:76%;font-size:clamp(34px,6.2vw,58px);line-height:1.03;letter-spacing:-.005em}
+h2{font-weight:750;font-stretch:84%;font-size:clamp(23px,3.2vw,30px);line-height:1.12}
+h3{font-weight:700;font-stretch:90%;font-size:18px;line-height:1.25}
+p{margin:0}
+b,strong{font-weight:600}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow,.kicker{margin:0;font:600 12px/1.3 var(--ui);letter-spacing:.12em;text-transform:uppercase}
+.eyebrow{color:var(--accent-ink)}
+.kicker{color:var(--muted)}
+
+/* header */
+.top{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:clamp(18px,2.3vw,21px);line-height:1.55;max-width:60ch}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:6px}
+@media (max-width:780px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:14px 14px 13px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.tile.key{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.tile .k{font:600 11.5px/1.3 var(--ui);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tile .v{font:800 clamp(30px,4.6vw,42px)/1.05 var(--display);font-stretch:82%}
+.tile .s{font:400 13.5px/1.4 var(--ui);color:var(--ink-2)}
+.assume{font:400 14px/1.55 var(--ui);color:var(--ink-2);max-width:82ch}
+
+/* sections */
+section{display:flex;flex-direction:column;gap:14px;min-width:0}
+section > p,section > ul,section > ol,.prose{max-width:68ch}
+.sec-head{display:flex;flex-direction:column;gap:6px}
+ul.plain,ol.plain{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:7px}
+.small{font:400 14px/1.55 var(--ui);color:var(--ink-2)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card h3{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.card .tag{font:600 11.5px/1.2 var(--ui);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.card p,.card li{font:400 15px/1.55 var(--ui);color:var(--ink-2)}
+.card .big{font:800 30px/1.05 var(--display);font-stretch:82%;color:var(--ink)}
+.card ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:5px}
+
+/* tables */
+.tbl-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:12px}
+table.tbl{width:100%;border-collapse:collapse;font:14px/1.45 var(--ui);min-width:560px}
+.tbl caption{caption-side:top;text-align:left;padding:12px 14px 4px;font:600 13px/1.4 var(--ui);color:var(--ink-2)}
+.tbl th{text-align:left;font:600 11.5px/1.3 var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:bottom}
+.tbl td{padding:9px 14px;border-bottom:1px solid var(--rule);vertical-align:top;color:var(--ink)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td.n,.tbl th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl tr.total td{font-weight:600;border-top:1px solid var(--ink-2)}
+.tbl .sub{display:block;color:var(--muted);font-size:12.5px}
+
+/* chart */
+.chart-card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:18px 16px 14px;position:relative;display:flex;flex-direction:column;gap:10px;min-width:0}
+.chart-card figcaption{display:flex;flex-direction:column;gap:4px}
+.fig-sub{font:400 14px/1.5 var(--ui);color:var(--ink-2);max-width:80ch}
+.legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;font:500 13px/1.3 var(--ui);color:var(--ink-2)}
+.legend li{display:flex;align-items:center;gap:7px}
+.lk{display:inline-block;width:20px;height:0;border-top:2px solid var(--series-1)}
+.lk.base{border-top:2px dashed var(--accent)}
+.lk.flush{border-top:2px dashed var(--flush)}
+.lk.stress{border-top:2px dashed var(--series-2)}
+.plot{width:100%;min-height:290px}
+.svg{display:block;width:100%;height:auto;font-family:var(--ui);touch-action:pan-y}
+.svg:focus{outline:none}
+.svg:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.grid{stroke:var(--grid);stroke-width:1}
+.axis{stroke:var(--rule);stroke-width:1}
+.ytick{fill:var(--muted);font-size:11px;text-anchor:end;font-variant-numeric:tabular-nums}
+.xtick{fill:var(--muted);font-size:11px;text-anchor:middle}
+.win{fill:var(--accent-soft)}
+.win-lbl{fill:var(--accent-ink);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.line{fill:none;stroke:var(--series-1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.floor{fill:none;stroke-width:2;stroke-dasharray:6 4}
+.f-base{stroke:var(--accent)}
+.f-flush{stroke:var(--flush)}
+.f-stress{stroke:var(--series-2)}
+.floor-lbl{fill:var(--ink);font-size:11.5px;font-weight:650;text-anchor:end;paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.ev-stem{stroke:var(--muted);stroke-width:1}
+.ev-dot{fill:var(--surface);stroke:var(--ink-2);stroke-width:1.5}
+.ev-num{fill:var(--ink);font-size:10px;font-weight:700;text-anchor:middle}
+.end{fill:var(--series-1);stroke:var(--surface);stroke-width:2}
+.end-lbl{fill:var(--ink);font-size:12px;font-weight:700;paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.ch-line{stroke:var(--muted);stroke-width:1}
+.ch-dot{fill:var(--series-1);stroke:var(--surface);stroke-width:2}
+.tip{position:absolute;z-index:3;pointer-events:none;background:var(--ink);color:var(--paper);border-radius:8px;padding:8px 10px;font:13px/1.4 var(--ui);max-width:250px;box-shadow:0 6px 18px rgb(0 0 0/.22)}
+.tip .d{opacity:.78;font-size:12px}
+.tip b{font:700 16px/1.3 var(--ui)}
+.tip .e{margin-top:5px;padding-top:5px;border-top:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
+.events{margin:4px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 22px;font:400 13.5px/1.45 var(--ui);color:var(--ink-2)}
+@media (max-width:700px){.events{grid-template-columns:minmax(0,1fr)}}
+.events li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;align-items:start}
+.events .n{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink-2);display:grid;place-items:center;font:700 10.5px/1 var(--ui);color:var(--ink);margin-top:1px}
+.events b{color:var(--ink);font-weight:600}
+details.tv{font:400 14px/1.5 var(--ui)}
+details.tv summary{cursor:pointer;color:var(--accent-ink);font-weight:600;width:max-content;max-width:100%}
+details.tv .tbl-scroll{margin-top:10px;max-height:340px;overflow:auto}
+details.tv table.tbl{min-width:0}
+
+/* probability bars */
+.bars{list-style:none;margin:0;padding:16px;display:flex;flex-direction:column;gap:9px;background:var(--surface);border:1px solid var(--rule);border-radius:12px}
+.bars li{display:grid;grid-template-columns:92px minmax(0,1fr) 44px;gap:10px;align-items:center;font:500 14px/1.3 var(--ui)}
+.bars .lbl{color:var(--ink-2);font-variant-numeric:tabular-nums}
+.bars .track{height:14px;background:var(--grid);border-radius:0 4px 4px 0;position:relative}
+.bars .fill{position:absolute;inset:0 auto 0 0;background:var(--series-1);border-radius:0 4px 4px 0}
+.bars .val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;color:var(--ink)}
+.bars .hd{font:600 11.5px/1.3 var(--ui);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+
+.sources{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:5px;font:400 13.5px/1.5 var(--ui);color:var(--ink-2);max-width:none}
+.sources a{overflow-wrap:anywhere}
+footer.foot{border-top:1px solid var(--rule);padding-top:18px;font:400 13.5px/1.55 var(--ui);color:var(--muted);max-width:82ch}
+@media (prefers-reduced-motion:no-preference){.bars .fill{transition:width .5s ease}}
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <p class="eyebrow">Oil market note · 8 October 2026 · WTI, next 3 months</p>
+    <h1>If the straits stay shut, WTI’s floor is about $78</h1>
+    <p class="lede">With the war on, Hormuz under attack and Bab al-Mandeb closed to Saudi ships, I expect NYMEX WTI to hold roughly <strong>$78 on weekly closes through early January</strong>, with about 80% confidence. The next dip most likely bottoms near <strong>$83</strong>. If both straits close to all traffic, the floor jumps to about <strong>$105</strong>.</p>
+    <div class="tiles">
+      <div class="tile"><span class="k">WTI now</span><span class="v">$92.75</span><span class="s">November contract, Oct 8 intraday. Settled $88.28 on Oct 7.</span></div>
+      <div class="tile key"><span class="k">Base-case floor</span><span class="v">$78</span><span class="s">Weekly closes to Jan 8, about 80% confidence. Roughly $90 Brent.</span></div>
+      <div class="tile"><span class="k">Most likely low</span><span class="v">$83</span><span class="s">Median three-month low: where the next dip probably stops.</span></div>
+      <div class="tile"><span class="k">Full closure</span><span class="v">$105</span><span class="s">Floor if both straits close to all ships. Roughly $117 Brent.</span></div>
+    </div>
+    <p class="assume"><b>Base case:</b> no deal. Hormuz stays officially shut and under attack, but crude keeps leaking out on dark and escorted tankers (about 10 mb/d in September, less so far this month). Bab al-Mandeb stays closed to Saudi-linked ships. Aramco’s East-West line finishes repairs by early December. The G7/IEA release of up to 100 million barrels goes ahead. <b>Stress case:</b> zero transits through both straits.</p>
+  </header>
+
+  <figure class="chart-card" id="chart-card" style="margin:0">
+    <figcaption>
+      <h2>Brent since January, and the floor zone for the next three months</h2>
+      <p class="fig-sub">Daily close of the December Brent contract (Financial Modeling Prep). The shaded window runs from Oct 8 to Jan 8. Dashed lines are the WTI levels drawn at their Brent equivalents, using today’s spread of about $12. Numbered markers match the events listed below the chart.</p>
+    </figcaption>
+    <ul class="legend" aria-label="Legend">
+      <li><i class="lk" aria-hidden="true"></i>Brent daily close</li>
+      <li><i class="lk base" aria-hidden="true"></i>Base-case floor (WTI $78)</li>
+      <li><i class="lk flush" aria-hidden="true"></i>Hard floor (WTI $73)</li>
+      <li><i class="lk stress" aria-hidden="true"></i>Full-closure floor (WTI $105)</li>
+    </ul>
+    <div class="plot" id="plot"></div>
+    <div class="tip" id="tip" role="status" aria-live="polite" hidden></div>
+    <ol class="events" aria-label="Events marked on the chart">
+      <li><span class="n">1</span><span><b>Feb 28.</b> US and Israeli strikes on Iran start the war. Hormuz tanker traffic collapses.</span></li>
+      <li><span class="n">2</span><span><b>Mar 9–11.</b> Oil spikes to about $119.50 intraday, then reverses after Trump calls the war “very complete”. The IEA agrees a record 400-million-barrel release.</span></li>
+      <li><span class="n">3</span><span><b>Apr 8–17.</b> Ceasefire and talks. Iran says Hormuz is open during the truce.</span></li>
+      <li><span class="n">4</span><span><b>Apr 30–May 4.</b> Trump rejects Iran’s plan to reopen Hormuz. Brent touches $126.41 intraday.</span></li>
+      <li><span class="n">5</span><span><b>Jun 17–Jul 1.</b> A US–Iran memorandum lifts blockades and Hormuz traffic surges. WTI bottoms at $68.58.</span></li>
+      <li><span class="n">6</span><span><b>Jul 13–23.</b> Iran’s new strait authority halts transits, the US reimposes its blockade, and the Houthis blockade Saudi ships at Bab al-Mandeb.</span></li>
+      <li><span class="n">7</span><span><b>Early Aug.</b> Bets on a framework deal produce the deepest no-deal dip, WTI roughly in the mid-$70s.</span></li>
+      <li><span class="n">8</span><span><b>Aug 25–26.</b> Washington shifts to economic pressure. Reopening hopes take WTI to about $82.</span></li>
+      <li><span class="n">9</span><span><b>Sep 10–15.</b> Drones knock out the East-West pipeline (no flow until Sep 22) and the Houthis take Yemen’s Red Sea coast.</span></li>
+      <li><span class="n">10</span><span><b>Sep 29.</b> Saudi Red Sea exports recover. Brent dips to $96.16.</span></li>
+      <li><span class="n">11</span><span><b>Oct 7–8.</b> The IEA speeds up releases and WTI settles at $88.28. Then record tanker attacks and reports of US strike planning lift prices about 5%.</span></li>
+    </ol>
+    <details class="tv">
+      <summary>Show the Brent closes as a table</summary>
+      <div class="tbl-scroll">
+        <table class="tbl"><thead><tr><th>Date</th><th class="n">Brent close ($/bbl)</th></tr></thead><tbody id="tv-body"></tbody></table>
+      </div>
+    </details>
+  </figure>
+
+  <section aria-labelledby="why">
+    <div class="sec-head"><p class="kicker">How the floor is set</p><h2 id="why">Four separate reads land between $78 and $83</h2></div>
+    <div class="grid2">
+      <div class="card"><h3>The lows keep rising <span class="tag">Market</span></h3>
+        <p>Since the June deal collapsed, each sell-off on peace hopes has stopped higher. WTI fell roughly to the mid-$70s on early-August deal bets, to about $82 in late August, and to $88.28 on Oct 7 after the IEA sped up its release. Brent shows the same steps: $79.36, $87.84, $96.16. The early-August low needed active deal bets, and $78 sits just above it.</p></div>
+      <div class="card"><h3>The cushion is thinner <span class="tag">Barrels</span></h3>
+        <p>The world was still about 5 mb/d short of pre-war supply in September, and early October looks worse. Emergency oil now arrives at 0.6–0.85 mb/d, down from 2.2 mb/d in the spring. Global stocks are 507 million barrels lower than in February, and the IEA expects lost demand to shrink from 5.3 mb/d in Q2 to 2.0 mb/d in Q4. The slack that let prices sag in summer is mostly gone.</p></div>
+      <div class="card"><h3>The curve already prices some peace <span class="tag">Futures</span></h3>
+        <p>On Oct 5 the December contract (CLZ6) settled at $87.96 and January (CLF7) at $86.85. June 2027 traded near $82 and December 2027 near $76. Those prices blend in some chance of a deal. Without one, the nearby contracts should hold up, and the $76–82 back end shows where WTI heads only once Hormuz reopens.</p></div>
+      <div class="card"><h3>Volatility sets the air pockets <span class="tag">Model</span></h3>
+        <p>Implied volatility (OVX) was 48.6 on Oct 7 and realized volatility has run about 50%, so drops of 10–15% inside two weeks happen about once a month. A 40,000-path simulation calibrated to that, pulling back toward a no-deal value near $93, puts the median three-month low at $83 and the 80% weekly floor at $78.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="barrels">
+    <div class="sec-head"><p class="kicker">Supply</p><h2 id="barrels">What’s missing, and what’s filling the hole</h2></div>
+    <p>A closed strait has not meant an empty one. Iran declared Hormuz shut, yet in September about 10 mb/d of crude still crossed on tankers running dark or under US escort, roughly three-quarters of the pre-war 13.5 mb/d. That flow is the base case’s biggest variable, and it is shrinking: a record 10 tankers were hit between Sep 28 and Oct 4, only 7 commodity ships crossed on Oct 6, and Hormuz crude fell 27% in a week.</p>
+    <div class="tbl-scroll"><table class="tbl">
+      <caption>Gulf oil flows, million barrels a day</caption>
+      <thead><tr><th>Route or country</th><th class="n">Pre-war</th><th class="n">September</th><th class="n">Full closure</th></tr></thead>
+      <tbody>
+        <tr><td>Hormuz crude</td><td class="n">13.5</td><td class="n">~10</td><td class="n">0</td></tr>
+        <tr><td>Hormuz products</td><td class="n">3.6</td><td class="n">0.7–1.3</td><td class="n">0</td></tr>
+        <tr><td>Bypass exports<span class="sub">Gulf of Oman and Red Sea ports</span></td><td class="n">&lt;3.4</td><td class="n">6.7</td><td class="n">4–5</td></tr>
+        <tr><td>Saudi crude, all routes</td><td class="n">~7</td><td class="n">5.1–6.6</td><td class="n">2.5–3</td></tr>
+        <tr><td>Iran crude exports<span class="sub">US blockade since Jul 14</span></td><td class="n">1.7–2</td><td class="n">~0</td><td class="n">0</td></tr>
+        <tr><td>Gulf exports excluding Iran</td><td class="n">23.6</td><td class="n">19.2</td><td class="n">5–6</td></tr>
+        <tr class="total"><td>Net global supply loss</td><td class="n">–</td><td class="n">~5 (3–7)</td><td class="n">15–18</td></tr>
+      </tbody>
+    </table></div>
+    <ul class="plain">
+      <li><b>Emergency stocks.</b> 325 million of the IEA’s 400-million-barrel March release has been delivered. The remaining 75–100 million barrels, which is most of what the G7’s “up to 100 million” refers to, works out to 0.6–0.85 mb/d into February. The US reserve holds 283 million barrels, its lowest since 1982.</li>
+      <li><b>Demand.</b> The IEA puts 2026 demand 2.5 mb/d below 2025, about 3.35 mb/d less than it expected before the war. The year-on-year loss narrows to 2.0 mb/d in Q4 as consumers adjust.</li>
+      <li><b>Other producers.</b> US output is heading for a record 13.9 mb/d and Brazil is up 18% on the year. Drone strikes have cut Russian and Kazakh supply, and OPEC+ has no meaningful spare capacity outside the Gulf.</li>
+      <li><b>Inventories.</b> Global observed stocks are down 507 million barrels since February. US distillate stocks hit a 40-year low on Sep 11. Cushing holds about 24.7 million barrels and has built for two weeks, one reason WTI trades at a wide discount.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="aramco">
+    <div class="sec-head"><p class="kicker">Aramco East-West pipeline</p><h2 id="aramco">The damage, the repair time, and what it does to the price</h2></div>
+    <p>The East-West line carries Saudi crude about 1,200 km from the eastern fields to Yanbu on the Red Sea, the kingdom’s only route around Hormuz. It reached its full 7 mb/d in March. Before September’s attack it ran about 5.5 mb/d, and about 4.5 mb/d of that was exported from Yanbu.</p>
+    <div class="grid2">
+      <div class="card"><h3>What happened <span class="tag">Sep 10 – Oct 6</span></h3>
+        <ul>
+          <li>Drone waves on Sep 10–11 hit pumping stations. Reuters’ sources say stations 8 and 9; Argus says 3 of 11, one badly, with the pipe itself intact. A temporary bypass now routes around the worst-hit station.</li>
+          <li>Flow was zero from Sep 11 to 22. It restarted at 2–2.65 mb/d, reached 5.5 mb/d by Oct 1 and 5.8 mb/d on Oct 6, according to the energy minister.</li>
+          <li>New hits since: a projectile started a fire at Yanbu port on Oct 1 and briefly stopped loading. On Oct 4 the Houthis claimed a strike on Khurais. One AFP source says a pump station there was badly damaged, while Bloomberg’s sources and the minister’s figure point to normal flow. This is unresolved.</li>
+        </ul></div>
+      <div class="card"><h3>How long repairs take <span class="tag">Estimates</span></h3>
+        <ul>
+          <li>Estimates range from 3–5 weeks (AP) and 4–6 weeks (Kpler) to “days” (US Energy Secretary Wright).</li>
+          <li>Precedents are fast. After the May 2019 drone strike on stations 8 and 9, pumping resumed the next day. After the 2019 Abqaiq attack, Saudi capacity was back in about 11 days.</li>
+          <li>With 5.8 of 7 mb/d already flowing, the remaining work is worth about 1.2 mb/d. The outlet is the tighter limit. Yanbu tops out near 4–4.5 mb/d of exports, and with Bab al-Mandeb closed to Saudi ships those barrels must go north through Suez and the 2.5 mb/d SUMED pipeline, or around Africa: 54 days to Korea instead of 24.</li>
+        </ul></div>
+    </div>
+    <p><strong>Why the price effect has been modest so far.</strong> Saudi Arabia has a relief valve. During the September outage it sent dark supertankers through Hormuz and lifted exports to as much as 6.6 mb/d. Brent rose about $7.50 and gave it all back within two weeks. In a full closure that valve shuts, the pipeline becomes the only Saudi outlet, and the same outage would be worth $20–30.</p>
+    <div class="grid3">
+      <div class="card"><h3>Fast <span class="tag">30% likely</span></h3><p class="big">Late Oct – early Nov</p>
+        <p>No new hits. 6.5 mb/d by mid-October, full 7 mb/d between Oct 25 and Nov 7. Saudi Red Sea exports 4–4.5 mb/d.</p>
+        <p><b>WTI:</b> floor slips about $2, to around $76. Likely low near $81.</p></div>
+      <div class="card"><h3>Base <span class="tag">45% likely</span></h3><p class="big">Early – mid Dec</p>
+        <p>Strikes every 2–3 weeks halt flow for 1–4 days. About 5–5.5 mb/d in October and 5.5–6 in November. Exports 3.5–4.5 mb/d.</p>
+        <p><b>WTI:</b> built into the $78 floor. Each short halt adds $2–4 for a few days.</p></div>
+      <div class="card"><h3>Slow <span class="tag">25% likely</span></h3><p class="big">January 2027 or later</p>
+        <p>A September-scale hit, such as confirmed damage at Khurais: 10–14 days near zero, then 2–3.5 mb/d rising over 3–4 weeks. Exports 2–3 mb/d.</p>
+        <p><b>WTI:</b> an $8–12 spike for 2–3 weeks, as in September. The floor rises to about $81–82 while it lasts.</p></div>
+    </div>
+    <p class="small">Repair paths and their odds are judgments drawn from the reports above. Price effects are scaled from the September episode and assume Hormuz keeps leaking. Under the stress case they would be two to three times larger.</p>
+  </section>
+
+  <section aria-labelledby="diesel">
+    <div class="sec-head"><p class="kicker">The EU diesel release</p><h2 id="diesel">Big for diesel, small for WTI, and mostly barrels already promised</h2></div>
+    <ul class="plain">
+      <li><b>What was agreed.</b> On Oct 2 the G7 backed releasing “up to” 100 million barrels over about four months, with a large diesel tranche within 20 days, around Oct 22. On Oct 7 IEA members agreed to deliver the rest of March’s pledges faster, diesel first. Since 325 million of the 400 million March barrels are already out, most of the G7 figure is those remaining barrels, not new oil. EU leaders meet Oct 15–16 and the IEA board reviews next week. Members still hold about 1.1 billion barrels, over 200 million of it diesel.</li>
+      <li><b>Scale.</b> Roughly 0.6–0.85 mb/d into February, compared with 2.2 mb/d in March–July. Fifty million barrels of diesel is about a sixth of the EU’s emergency diesel and gasoil stocks.</li>
+      <li><b>Diesel market.</b> The ICE gasoil crack fell from above $90 in September to about $73 on Oct 7 as the release came into view. US distillate stocks are about 12% below normal, and US diesel averaged $6.32 a gallon on Oct 6.</li>
+      <li><b>WTI.</b> The effect is small and largely priced: WTI fell $1.16 on Oct 7 on the faster-release news. The release also ended Washington’s threat of a US diesel export ban (dropped Oct 2), which had put up to 2 mb/d of US refining runs at risk and widened WTI’s discount. I put it at $1–3 off the floor through December. When deliveries end around February, the floor rises if the straits are still shut.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="stress">
+    <div class="sec-head"><p class="kicker">Stress case</p><h2 id="stress">If both straits close to everyone, the floor is about $105</h2></div>
+    <ul class="plain">
+      <li><b>What stops.</b> About 10 mb/d of Hormuz crude and 1 mb/d of products. Saudi west-coast exports fall to 2.5–3 mb/d, all heading north through Suez. About 280 Red Sea transits a week reroute around Africa, tying up tankers and lifting freight. The net loss jumps to 15–18 mb/d, three times today’s.</li>
+      <li><b>Smaller shock absorbers than in spring.</b> The IEA could restart releases at the 2.2 mb/d pace it managed in March–July from its 1.1-billion-barrel pool, but the US reserve is down to 283 million barrels. About 3 mb/d of the demand lost in Q2 has come back and would have to be priced out again.</li>
+      <li><b>Precedent.</b> From March to May, with Hormuz crude at 2.7–4.9 mb/d and Bab al-Mandeb still open, Brent averaged about $102 and WTI settled as high as $112.95. WTI touched $119.48 intraday on Mar 9 and Brent $126.41 on Apr 30. Goldman adds about $25 for a Bab al-Mandeb and Suez disruption on top of its $120-plus upside case, and Bank of America flags a $150-plus tail.</li>
+      <li><b>Floor.</b> About $105 WTI, or $117 Brent at today’s spread. The first spike would likely run to $120–150.</li>
+      <li><b>The WTI-specific catch.</b> With Brent at $140, pressure on Washington to limit US crude exports would be intense. Officials ruled out crude export curbs in August, but any curb would cap WTI and blow out the spread. That is the main way a long WTI position loses in a full closure.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="odds">
+    <div class="sec-head"><p class="kicker">Base-case odds</p><h2 id="odds">Chance WTI settles below each level before Jan 8</h2></div>
+    <ul class="bars" aria-label="Chance that WTI settles below each price at least once before January 8, base case">
+      <li class="hd"><span>Settles below</span><span>At least one daily close</span><span></span></li>
+      <li><span class="lbl">$90</span><span class="track"><span class="fill" style="width:92%"></span></span><span class="val">92%</span></li>
+      <li><span class="lbl">$85</span><span class="track"><span class="fill" style="width:71%"></span></span><span class="val">71%</span></li>
+      <li><span class="lbl">$80</span><span class="track"><span class="fill" style="width:41%"></span></span><span class="val">41%</span></li>
+      <li><span class="lbl">$78</span><span class="track"><span class="fill" style="width:30%"></span></span><span class="val">30%</span></li>
+      <li><span class="lbl">$75</span><span class="track"><span class="fill" style="width:16%"></span></span><span class="val">16%</span></li>
+      <li><span class="lbl">$70</span><span class="track"><span class="fill" style="width:4%"></span></span><span class="val">4%</span></li>
+    </ul>
+    <p class="small">On weekly closes the odds are lower: $85 59%, $80 30%, $78 21%, $75 11%, $70 2%. By Jan 8 the middle 80% of outcomes runs from $82 to $106, centred on $93. The hard floor of $73 is the level daily closes stay above in about 90% of paths.</p>
+    <p class="small">Model: 40,000 simulated paths for the front-month contract over 63 trading days. Prices pull back toward a no-deal value of about $93, with a 12-day half-life. EIA’s October outlook has Brent at $105 in Q4, which implies roughly $93–97 for WTI. Headline jumps hit about once a month each way (down 7%, up 6% on average). Total volatility is about 50%, in line with OVX and realized volatility. Varying the assumptions moves the 80% weekly floor between $76 and $79 and the median low between $83 and $85.</p>
+  </section>
+
+  <section aria-labelledby="risks">
+    <div class="sec-head"><p class="kicker">Catalysts</p><h2 id="risks">What breaks the floor, and what lifts it</h2></div>
+    <div class="grid2">
+      <div class="card"><h3>Breaks it <span class="tag">Downside</span></h3><ul>
+        <li>A real US–Iran deal. This scenario rules it out, but it is the biggest risk. June’s memorandum took WTI to $68.58, and the $76–82 back of the curve is where it would head.</li>
+        <li>Deal talk without a deal. Reports of talks helped knock $1.16 off on Oct 7, and early-August deal bets took WTI to roughly the mid-$70s.</li>
+        <li>A new IEA release beyond March’s barrels. The board reviews next week.</li>
+        <li>WTI-only pressure: more Cushing builds, the Brent–WTI spread widening past $14, or US export curbs.</li>
+        <li>Washington before the Nov 3 midterms: up to 40 million barrels of reserve exchanges in November and December, plus pressure on allies.</li>
+      </ul></div>
+      <div class="card"><h3>Lifts it <span class="tag">Upside</span></h3><ul>
+        <li>More tanker attacks pushing Hormuz flows toward zero.</li>
+        <li>New strikes on Saudi infrastructure. The pipeline is still 1.2 mb/d below capacity.</li>
+        <li>US strikes on Iran. Reports say the White House is drafting options.</li>
+        <li>Emergency barrels running out around February, with the US reserve at a 44-year low.</li>
+        <li>Demand coming back. The IEA sees the year-on-year loss shrinking to 2.0 mb/d in Q4.</li>
+        <li>Light positioning. Hedge-fund net length is near the 10th percentile, so short covering can be sharp.</li>
+        <li>Hurricane Isaias, which shut about a quarter of Gulf of Mexico output ahead of landfall.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="watch">
+    <div class="sec-head"><p class="kicker">Weekly checklist</p><h2 id="watch">Signals to watch</h2></div>
+    <div class="tbl-scroll"><table class="tbl">
+      <thead><tr><th>Signal</th><th>Where to see it</th><th>Weakens the floor</th><th>Strengthens the floor</th></tr></thead>
+      <tbody>
+        <tr><td>Hormuz crude flows</td><td>Kpler and Vortexa data, usually via Reuters</td><td>Back to September’s ~10 mb/d or higher</td><td>Below 5 mb/d</td></tr>
+        <tr><td>East-West throughput</td><td>Saudi energy ministry, Yanbu loadings</td><td>Full 7 mb/d by early November</td><td>Another outage</td></tr>
+        <tr><td>Release decisions</td><td>IEA board (week of Oct 12), IEA report Oct 14, EU summit Oct 15–16</td><td>New barrels beyond March’s pledges</td><td>No new barrels</td></tr>
+        <tr><td>Cushing stocks</td><td>EIA weekly report, Wednesdays</td><td>Builds keep coming</td><td>Draws resume</td></tr>
+        <tr><td>Brent–WTI spread</td><td>Front-month settlements</td><td>Wider than $14</td><td>Back toward $8</td></tr>
+        <tr><td>US policy</td><td>Midterms Nov 3, reserve exchange awards</td><td>Export curbs, large reserve awards</td><td>Strikes on Iran</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section aria-labelledby="method">
+    <div class="sec-head"><p class="kicker">Method and sources</p><h2 id="method">How this was put together</h2></div>
+    <ul class="plain small">
+      <li>Brent daily closes come from Financial Modeling Prep. WTI levels are settlements reported by Newsquawk, MarketScreener and CNBC. The EIA and FRED sites were blocked from this research environment and the FMP plan does not include WTI, so the chart uses Brent and converts the WTI levels at a $12 spread.</li>
+      <li>Flows, stocks and forecasts come from wire and trade-press reports up to Oct 8, mostly read through search excerpts. Conflicting or single-source items are flagged in the text. OPEC’s report on Oct 13 and the IEA’s on Oct 14 may revise them.</li>
+      <li>The floors are conditional on the scenario. They are not a forecast that the scenario will happen.</li>
+    </ul>
+    <ol class="sources">
+      <li>Hormuz flows: <a href="https://www.cnbc.com/2026/09/30/iran-war-strait-hormuz-gulf-oil-fuel.html">CNBC, Sep 30</a> · <a href="https://www.investing.com/news/commodities-news/hormuz-transits-at-lowest-in-over-two-months-after-attacks-data-shows-4937851">Reuters via Investing.com, Oct 7</a> · <a href="https://gcaptain.com/gulf-oil-flows-rise-to-average-81-of-pre-war-rate-in-september/">Reuters via gCaptain, Oct 6</a> · <a href="https://boereport.com/2026/09/30/gulf-crude-oil-exports-return-to-2025-level-goldman-sachs-says/">Goldman via BOE Report, Sep 30</a> · <a href="https://www.cnn.com/2026/10/08/business/oil-diesel-prices-tanker-attacks-hormuz-intl">CNN, Oct 8</a></li>
+      <li>East-West pipeline: <a href="https://www.spglobal.com/energy/en/news-research/latest-news/crude-oil/031026-aramcos-east-west-pipeline-to-hit-full-capacity-in-next-couple-of-days-ceo">S&amp;P Global, Mar 10</a> · <a href="https://www.cnbc.com/2026/09/11/saudi-arabia-shut-down-east-west-crude-oil-pipeline.html">CNBC, Sep 11</a> · <a href="https://www.timesofisrael.com/liveblog_entry/sources-2-pumping-stations-along-saudi-east-west-pipeline-damaged-in-recent-attack/">Reuters via Times of Israel, Sep 16</a> · <a href="https://www.argusmedia.com/de/news-and-insights/latest-market-news/2885325-saudi-east-west-crude-pipeline-at-5.5mn-b-d-source">Argus, Oct 1</a> · <a href="https://www.thenationalnews.com/business/economy/2026/10/06/saudi-arabia-restores-east-west-pipeline-flows-to-58-million-bpd-energy-minister-says/">The National, Oct 6</a> · <a href="https://www.kpler.com/blog/yanbu-pipeline-attack-ripples-across-crude-freight-and-gas-markets">Kpler</a> · <a href="https://www.middleeasteye.net/live-blog/live-blog-update/saudi-east-west-oil-pipeline-may-take-five-weeks-repair-officials-say">Middle East Eye (AP)</a> · <a href="https://www.cnbc.com/2026/09/15/saud-arabia-east-west-pipeline-iran-war-chris-wright.html">CNBC, Sep 15</a> · <a href="https://www.brecorder.com/news/40442740/east-west-oil-pipeline-pumping-halted-after-new-attack-saudi-energy-sector-source">Business Recorder (AFP)</a> · <a href="https://www.bloomberg.com/news/articles/2026-10-05/saudi-east-west-oil-pipeline-is-flowing-as-normal-people-say">Bloomberg, Oct 5</a> · <a href="https://www.marineinsight.com/unknown-projectile-hits-saudi-arabias-yanbu-port-causing-fire-halting-tanker-loading/">Marine Insight</a> · <a href="https://www.lloydslist.com/LL1158529/Saudi-tanker-transits-through-Hormuz-hit-war-time-high-after-pipeline-attack">Lloyd’s List</a></li>
+      <li>Repair precedents: <a href="https://english.aawsat.com/node/1725476">Asharq Al-Awsat (2019)</a> · <a href="https://www.worldoil.com/news/2019/9/25/saudi-oil-capacity-recovering-from-attacks-faster-than-expected">World Oil (2019)</a></li>
+      <li>Red Sea and Bab al-Mandeb: <a href="https://www.lloydslistintelligence.com/resources/blog/red-sea-brief-18-september-2026">Lloyd’s List Intelligence, Sep 18</a> · <a href="https://www.lloydslistintelligence.com/resources/blog/red-sea-brief-1-october-2026">Oct 1</a> · <a href="https://www.kpler.com/blog/explainer-can-saudi-arabia-keep-its-red-sea-oil-exports-flowing-without-bab-el-mandeb">Kpler explainer</a> · <a href="https://www.agbi.com/oil-and-gas/2026/04/oil-flows-at-egypts-sumed-pipeline-up-150-since-start-of-iran-war/">AGBI on SUMED</a> · <a href="https://www.kunc.org/npr-news/2026-07-21/amid-u-s-iran-war-houthis-declare-a-blockade-of-another-key-strait-bab-el-mandeb">NPR, Jul 21</a></li>
+      <li>Stocks and releases: <a href="https://www.iea.org/news/statement-by-iea-executive-director-on-meeting-of-iea-member-governments-on-7-october-2026">IEA statement, Oct 7</a> · <a href="https://www.thenationalnews.com/business/energy/2026/10/07/iea-members-support-faster-release-of-reserve-oil-stocks/">The National, Oct 7</a> · <a href="https://www.cbc.ca/news/business/g7-trump-diesel-reserve-release-9.7366871">CBC on the G7 release</a> · <a href="https://euronews.com/2026/10/02/can-releasing-more-of-europes-emergency-reserves-bring-diesel-prices-down">Euronews, Oct 2</a> · <a href="https://www.ogj.com/general-interest/economics-markets/news/55410217/eia-us-crude-oil-inventories-down-32-million-bbl">OGJ on EIA weekly data</a> · <a href="https://www.energy.gov/articles/united-states-energy-department-continues-execution-strategic-reserve-release-commitments">US DOE</a> · <a href="https://www.iea.org/reports/oil-market-report-september-2026">IEA Oil Market Report, September</a></li>
+      <li>Diesel: <a href="https://fxstreet.com/news/oil-supply-risks-offset-stronger-flows-ing-202610070624">ING via FXStreet, Oct 7</a> · <a href="https://www.cnbc.com/2026/10/02/diesel-oil-trump-europe-export-ban.html">CNBC, Oct 2</a> · <a href="https://fortune.com/2026/10/03/us-diesel-export-ban-record-prices-trump-europe-g7-reserves-release/">Fortune, Oct 3</a> · <a href="https://www.hydrocarbonprocessing.com/news/2026/09/talk-of-us-diesel-export-ban-deepens-us-crude-futures-discount-to-global-benchmark/">Hydrocarbon Processing</a></li>
+      <li>WTI prices, spread and curve: <a href="https://www.marketscreener.com/news/november-wti-crude-oil-contract-closes-down-1-16-or-1-3-settles-at-88-28-per-barrel-december-b-ce785ddedd88f026">MarketScreener, Oct 7</a> · <a href="https://www.cnbc.com/2026/10/08/oil-prices-today-brent-wti-hormuz.html">CNBC, Oct 8</a> · <a href="https://www.vantagemarkets.com/market-analysis/why-brent-held-premium-over-wti-tanker-freight-record-october-5-9-2026/">Vantage on the spread</a> · <a href="https://www.rigzone.com/news/wti_discount_to_brent_deepens-30-sep-2026-184736-article/">Rigzone, Sep 30</a> · <a href="https://commodity-board.com/backwardation-steepens-as-crude-slides-on-relief-in-supply-risk">Futures curve, Oct 5</a> · <a href="https://www.investing.com/indices/cboe-crude-oil-volatility-historical-data">OVX history</a> · <a href="https://www.fxstreet.com/analysis/cftc-report-speculators-turn-more-defensive-as-oil-exposure-falls-202610041345">CFTC positioning via FXStreet</a> · <a href="https://newsquawk.com/headlines/crude-wrap-wti-q6-settles-usd-2-69-lower-at-usd-69-23-bbl-brent-q6-settles-usd-3-27-lower-at-usd-71-99-bbl-26-06-2026">Newsquawk, Jun 26</a></li>
+      <li>Events: <a href="https://www.fortune.com/2026/03/09/stock-market-today-massive-upside-reversal-oil-prices-trump-iran-war-over-soon">Fortune, Mar 9</a> · <a href="https://abc7ny.com/post/gas-prices-oil-briefly-touches-126-highest-price-years/19004912/">ABC, Apr 30</a> · <a href="https://www.meed.com/oil-prices-drops-to-pre-conflict-levels-as-strait-of-hormuz-opens-up">MEED on the June memorandum</a> · <a href="https://www.iranintl.com/en/202607129204">Iran International, Jul 12</a> · <a href="https://www.cnbc.com/2026/08/25/oil-prices-iran-trump-hormuz.html">CNBC, Aug 25</a> · <a href="https://www.cnbc.com/2026/09/29/oil-prices-today-brent-wti-hormuz.html">CNBC, Sep 29</a> · <a href="https://www.iranintl.com/en/202610072501">Iran International, Oct 7</a> · <a href="https://boereport.com/2026/10/07/about-25-of-gulf-of-mexico-oil-output-shut-in-due-to-isaias-us-agency-says/">BOE Report on Hurricane Isaias</a></li>
+      <li>Forecasts: <a href="https://financefeeds.com/brent-oil-forecast-eia-105-q4-2026">EIA October outlook via FinanceFeeds</a> · <a href="https://money.usnews.com/investing/news/articles/2026-09-30/analysts-raise-2026-oil-forecasts-on-prolonged-gulf-disruption-reuters-poll">Reuters poll via US News</a> · <a href="https://boereport.com/2026/09/08/goldman-sachs-hsbc-raise-oil-price-forecasts-on-gulf-disruptions/">Goldman via BOE Report</a> · <a href="https://www.indexbox.io/blog/goldman-sachs-raises-oil-price-forecasts-on-middle-east-shipping-disruptions/">Goldman scenarios via IndexBox</a> · <a href="https://www.thestreet.com/investing/bank-of-america-raises-oil-price-target-with-strong-warning">Bank of America via TheStreet</a></li>
+    </ol>
+  </section>
+
+  <footer class="foot">Prepared 8 October 2026. This is scenario analysis conditional on the assumptions above, not investment advice. Figures are reported values from public sources and may be revised.</footer>
+</main>
+
+<script>
+(function(){
+"use strict";
+/*BRENT_DATA*/
+const EVENTS=[
+  {d:"2026-03-02",n:1,below:true,t:"Feb 28: US and Israeli strikes on Iran start the war. Hormuz tanker traffic collapses."},
+  {d:"2026-03-10",n:2,below:true,t:"Mar 9–11: Oil spikes to about $119.50 intraday, then reverses after Trump calls the war “very complete”. The IEA agrees a record 400-million-barrel release."},
+  {d:"2026-04-17",n:3,below:true,t:"Apr 8–17: Ceasefire and talks. Iran says Hormuz is open during the truce."},
+  {d:"2026-05-04",n:4,t:"Apr 30–May 4: Trump rejects Iran’s plan to reopen Hormuz. Brent touches $126.41 intraday."},
+  {d:"2026-07-01",n:5,below:true,t:"Jun 17–Jul 1: A US–Iran memorandum lifts blockades and Hormuz traffic surges. WTI bottoms at $68.58."},
+  {d:"2026-07-23",n:6,t:"Jul 13–23: Iran’s new strait authority halts transits, the US reimposes its blockade, and the Houthis blockade Saudi ships at Bab al-Mandeb."},
+  {d:"2026-08-04",n:7,below:true,t:"Early Aug: Bets on a framework deal produce the deepest no-deal dip, WTI roughly in the mid-$70s."},
+  {d:"2026-08-26",n:8,below:true,t:"Aug 25–26: Washington shifts to economic pressure. Reopening hopes take WTI to about $82."},
+  {d:"2026-09-15",n:9,t:"Sep 10–15: Drones knock out the East-West pipeline (no flow until Sep 22) and the Houthis take Yemen’s Red Sea coast."},
+  {d:"2026-09-29",n:10,below:true,t:"Sep 29: Saudi Red Sea exports recover. Brent dips to $96.16."},
+  {d:"2026-10-07",n:11,below:true,nd:52,t:"Oct 7–8: The IEA speeds up releases and WTI settles at $88.28. Then record tanker attacks and reports of US strike planning lift prices about 5%."}
+];
+const SPREAD=12; // Brent minus WTI, $/bbl, used to draw the WTI floors on the Brent chart
+const FLOORS=[
+  {wti:78,short:"Floor",cls:"f-base"},
+  {wti:73,short:"Hard floor",cls:"f-flush",below:true},
+  {wti:105,short:"Full-closure floor",cls:"f-stress"}
+];
+const WIN0="2026-10-08", WIN1="2027-01-08";
+const NS="http://www.w3.org/2000/svg";
+const T=s=>Date.parse(s+"T00:00:00Z");
+const PTS=BRENT.map(([d,v])=>({d,v,x:T(d)}));
+const fmt=(ms,o)=>new Date(ms).toLocaleDateString("en-US",Object.assign({timeZone:"UTC"},o));
+function mk(tag,a,p){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+function txt(tag,a,p,s){const e=mk(tag,a,p);e.textContent=s;return e}
+function nearestIdx(x){let lo=0,hi=PTS.length-1;if(x<=PTS[0].x)return 0;if(x>=PTS[hi].x)return hi;while(hi-lo>1){const mid=(lo+hi)>>1;if(PTS[mid].x<x)lo=mid;else hi=mid}return (x-PTS[lo].x)<=(PTS[hi].x-x)?lo:hi}
+const evByIdx=new Map();EVENTS.forEach(ev=>evByIdx.set(nearestIdx(T(ev.d)),ev));
+
+const host=document.getElementById("plot"),tip=document.getElementById("tip"),card=document.getElementById("chart-card");
+let cur=null,S=null;
+
+function draw(){
+  const W=Math.max(300,Math.round(host.clientWidth)),narrow=W<560;
+  const H=narrow?300:360,m={t:30,r:10,b:28,l:40};
+  const x0=T("2026-01-01"),x1=T(WIN1);
+  const lv=FLOORS.map(f=>f.wti+SPREAD);
+  const y0=Math.min(50,Math.floor((Math.min(...lv)-6)/10)*10),y1=Math.max(130,Math.ceil((Math.max(...lv)+8)/10)*10);
+  const X=v=>m.l+(v-x0)/(x1-x0)*(W-m.l-m.r),Y=v=>m.t+(y1-v)/(y1-y0)*(H-m.t-m.b);
+  host.replaceChildren();
+  const svg=mk("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H,class:"svg",tabindex:"0",role:"img","aria-label":"Brent daily closes since January 2026, with the WTI floor levels for the next three months drawn at their Brent equivalents. Focus the chart and use the left and right arrow keys to read each day."},host);
+  const wx=X(T(WIN0)),wX=X(x1);
+  mk("rect",{x:wx,y:m.t,width:wX-wx,height:H-m.t-m.b,class:"win"},svg);
+  txt("text",{x:wx+6,y:m.t-10,class:"win-lbl"},svg,narrow?"Next 3 mo":"Next 3 months");
+  for(let v=y0;v<=y1;v+=10){mk("line",{x1:m.l,x2:W-m.r,y1:Y(v),y2:Y(v),class:"grid"},svg);txt("text",{x:m.l-6,y:Y(v)+4,class:"ytick"},svg,"$"+v)}
+  mk("line",{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,class:"axis"},svg);
+  for(let i=0;i<=12;i++){if(narrow&&i%2)continue;const d=Date.UTC(2026,i,1);mk("line",{x1:X(d),x2:X(d),y1:H-m.b,y2:H-m.b+4,class:"axis"},svg);txt("text",{x:X(d),y:H-9,class:"xtick"},svg,fmt(d,{month:"short"})+(i===12?" ’27":""))}
+  FLOORS.forEach(f=>{const yy=Y(f.wti+SPREAD);mk("line",{x1:wx,x2:wX,y1:yy,y2:yy,class:"floor "+f.cls},svg);txt("text",{x:wX-4,y:f.below?yy+15:yy-6,class:"floor-lbl"},svg,narrow?`$${f.wti} WTI`:`${f.short} $${f.wti} WTI`)});
+  mk("path",{d:PTS.map((p,i)=>(i?"L":"M")+X(p.x).toFixed(1)+" "+Y(p.v).toFixed(1)).join(""),class:"line"},svg);
+  EVENTS.forEach(ev=>{const p=PTS[nearestIdx(T(ev.d))];const off=narrow&&ev.nd?ev.nd:18,px=X(p.x),py=Y(p.v),cy=py+(ev.below?off:-off);mk("line",{x1:px,x2:px,y1:py,y2:cy,class:"ev-stem"},svg);mk("circle",{cx:px,cy,r:8,class:"ev-dot"},svg);txt("text",{x:px,y:cy+3.5,class:"ev-num"},svg,String(ev.n))});
+  const L=PTS[PTS.length-1];mk("circle",{cx:X(L.x),cy:Y(L.v),r:4.5,class:"end"},svg);txt("text",{x:X(L.x)+8,y:Y(L.v)+4,class:"end-lbl"},svg,"$"+L.v.toFixed(2));
+  const ch=mk("g",{class:"ch",visibility:"hidden"},svg),chl=mk("line",{y1:m.t,y2:H-m.b,class:"ch-line"},ch),chd=mk("circle",{r:4.5,class:"ch-dot"},ch);
+  S={svg,X,Y,ch,chl,chd,W};
+  svg.addEventListener("pointermove",e=>{const r=svg.getBoundingClientRect();const px=(e.clientX-r.left)*(W/r.width);const xv=x0+(px-m.l)/(W-m.l-m.r)*(x1-x0);show(nearestIdx(xv))});
+  svg.addEventListener("pointerleave",hide);
+  svg.addEventListener("focus",()=>show(cur??PTS.length-1));
+  svg.addEventListener("blur",hide);
+  svg.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){e.preventDefault();const i=(cur??PTS.length-1)+(e.key==="ArrowLeft"?-1:1);show(Math.max(0,Math.min(PTS.length-1,i)))}else if(e.key==="Escape")hide()});
+}
+function show(i){
+  if(!S)return;cur=i;const p=PTS[i],{X,Y,ch,chl,chd,svg,W}=S,cx=X(p.x),cy=Y(p.v);
+  chl.setAttribute("x1",cx);chl.setAttribute("x2",cx);chd.setAttribute("cx",cx);chd.setAttribute("cy",cy);ch.setAttribute("visibility","visible");
+  const ev=evByIdx.get(i);
+  const d=document.createElement("div");d.className="d";d.textContent=fmt(p.x,{weekday:"short",month:"short",day:"numeric",year:"numeric"});
+  const b=document.createElement("b");b.textContent="$"+p.v.toFixed(2);
+  const s=document.createElement("span");s.textContent=" Brent close";
+  tip.replaceChildren(d,b,s);
+  if(ev){const e=document.createElement("div");e.className="e";e.textContent=ev.n+". "+ev.t;tip.append(e)}
+  tip.hidden=false;
+  const r=svg.getBoundingClientRect(),cr=card.getBoundingClientRect(),k=r.width/W;
+  const ax=r.left-cr.left+cx*k,ay=r.top-cr.top+cy*k,tw=tip.offsetWidth,th=tip.offsetHeight;
+  let left=ax+14;if(left+tw>cr.width-8)left=ax-tw-14;left=Math.max(8,left);
+  let top=ay-th-14;if(top<8)top=ay+16;
+  tip.style.left=left+"px";tip.style.top=top+"px";
+}
+function hide(){if(S)S.ch.setAttribute("visibility","hidden");tip.hidden=true}
+draw();
+let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{const w=cur;draw();if(!tip.hidden&&w!=null)show(w)},90)}).observe(host);
+
+const tb=document.getElementById("tv-body");
+for(let i=PTS.length-1;i>=0;i--){const tr=document.createElement("tr");const a=document.createElement("td");a.textContent=fmt(PTS[i].x,{year:"numeric",month:"short",day:"numeric"});const v=document.createElement("td");v.className="n";v.textContent=PTS[i].v.toFixed(2);tr.append(a,v);tb.append(tr)}
+})();
+</script>
