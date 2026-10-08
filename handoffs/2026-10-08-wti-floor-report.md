@@ -42,7 +42,9 @@ The user, an investor/trader, wants the **floor price of WTI over the next 3 mon
   - The US diesel export-ban threat was dropped Oct 2.
 
 ## Key files
-In the repo, on branch `claude/oil-floor-price-forecast-jtgct2` (pushed). Cloud container paths are `/home/user/money-app/...`; in a local clone, use the same repo-relative paths.
+**Durable copy: the published artifact.** Its HTML embeds the full Brent data, chart code, events and floors. In a new session, `Artifact` `action:"read"` with the URL saves the full page to a local file. Edit that file and republish it with the same `url`.
+
+The files below were committed locally (commit `b61ad34`) on branch `claude/oil-floor-price-forecast-jtgct2` in the cloud container at `/home/user/money-app/handoffs/wti-floor-report/`. **The push failed:** Claude has no GitHub access to GKTO1/money-app (403). The files are gone once that container is reclaimed. Recreate the scripts from the parameters below if they're needed.
 - `handoffs/wti-floor-report/template.html` — report source.
   - The chart uses the `BRENT` array, `EVENTS`, `SPREAD=12`, and `FLOORS` (wti 78/73/105).
   - Contains the `/*BRENT_DATA*/` placeholder that the build fills.
