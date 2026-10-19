@@ -1,6 +1,7 @@
 "use strict";
 const KEY = "mm.v1";
-const CATS = ["Food", "Transport", "Phone & internet", "Tobacco", "Health", "Going out", "Home items", "Other"];
+const CATS = ["Food", "Transport", "Phone & internet", "Tobacco", "Health", "Going out", "Home items", "Education", "Debt", "Other"];
+const INCOME_KINDS = ["Loan", "Money back", "Gift", "Other"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const RRULE_DAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
@@ -37,6 +38,34 @@ const isValid = s => s && s.version === 1 && s.settings && Array.isArray(s.goals
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)); } catch { S = null; }
 if (!isValid(S)) S = defaults();
+S.invest ||= {};
+S.migrated ||= [];
+// One-time fix for entries logged before income/investment/one-off types existed (backup of 2026-10-20).
+if (!S.migrated.includes("2026-10-types")) {
+  const fixes = {
+    bbo0cnckpczr: [50, { type: "income", kind: "Loan" }],
+    py3i4xfrdjai: [100, { type: "invest", dir: "out", account: "CFI" }],
+    dihsu1aesosu: [50, { type: "invest", dir: "out", account: "CFI" }],
+    "2dafaql68vj8": [100, { type: "invest", dir: "in", account: "CFI" }],
+    "0dxhjlgs0u8n": [50, { type: "invest", dir: "in", account: "CFI" }],
+    o6b5aln68kxf: [252, { cat: "Education", oneoff: true }],
+    "33r6d5b69sf3": [24, { oneoff: true }],
+    "5k0tj7z8ijsc": [60, { cat: "Debt", oneoff: true }],
+    "2u0gyq4s25uf": [26, { cat: "Phone & internet" }],
+    qgg78c8s5hz3: [15, { cat: "Home items", oneoff: true }],
+    oft5dbnkodgi: [10, { cat: "Other", oneoff: true }],
+    "7gg67g4wf0f3": [1.5, { cat: "Tobacco" }],
+    m0c0oqlykv4w: [10, { cat: "Tobacco" }],
+    "7xd8wnus1v0f": [30, { cat: "Going out" }],
+  };
+  for (const e of S.entries) {
+    const f = fixes[e.id];
+    if (!f || e.amount !== f[0]) continue;
+    Object.assign(e, f[1]);
+    if (e.type !== "spend") { delete e.cat; delete e.oneoff; }
+  }
+  S.migrated.push("2026-10-types");
+}
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
   catch { toast("Couldn't save on this phone. Free up some storage and try again."); }
@@ -44,7 +73,7 @@ function save() {
 save();
 try { navigator.storage?.persist?.(); } catch {}
 
-const ui = { tab: "today", month: thisMonth(), type: "spend", cat: "Food", goal: null, editGoal: null, editRem: null, editBill: null };
+const ui = { tab: "today", month: thisMonth(), type: "spend", cat: "Food", goal: null, oneoff: false, kind: "Loan", dir: "in", account: "CFI", editGoal: null, editRem: null, editBill: null, editEntry: null, editInvest: null };
 
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
@@ -75,7 +104,10 @@ function calc(m) {
   const sum = t => inMonth.filter(e => e.type === t).reduce((s, e) => s + e.amount, 0);
   const paidFor = shiftMonth(m, -1);
   const pay = (S.hours[paidFor] || 0) * S.settings.rate;
-  const tips = sum("tip"), spent = sum("spend"), toGoals = sum("goal");
+  const tips = sum("tip"), spent = sum("spend"), toGoals = sum("goal"), other = sum("income");
+  const investIn = inMonth.filter(e => e.type === "invest" && e.dir === "in").reduce((s, e) => s + e.amount, 0);
+  const investOut = inMonth.filter(e => e.type === "invest" && e.dir === "out").reduce((s, e) => s + e.amount, 0);
+  const everyday = inMonth.filter(e => e.type === "spend" && !e.oneoff).reduce((s, e) => s + e.amount, 0);
   const income = pay + tips;
   const reserve = income * (S.settings.goalPct || 0) / 100;
   const billsLeft = S.bills.reduce((s, b) => {
@@ -83,8 +115,8 @@ function calc(m) {
     return s + Math.max(0, b.amount - paid);
   }, 0);
   const goalsOut = Math.max(reserve, toGoals);
-  const safe = income - spent - billsLeft - goalsOut;
-  return { inMonth, paidFor, pay, tips, spent, toGoals, income, reserve, billsLeft, goalsOut, safe };
+  const safe = income + other + investOut - investIn - spent - billsLeft - goalsOut;
+  return { inMonth, paidFor, pay, tips, other, investIn, investOut, everyday, spent, toGoals, income, reserve, billsLeft, goalsOut, safe };
 }
 const goalSaved = g => (g.start || 0) + S.entries.filter(e => e.type === "goal" && e.goal === g.id).reduce((s, e) => s + e.amount, 0);
 const currentGoal = () => S.goals.find(g => g.target && goalSaved(g) < g.target);
@@ -112,64 +144,115 @@ function viewToday() {
   const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysLeft = dim - now.getDate() + 1;
   const perDay = c.safe / daysLeft;
+  const rows = [
+    [`Pay for ${monthName(c.paidFor, { month: "long" })} hours`, c.pay],
+    ["Tips", c.tips],
+    c.other ? ["Other income", c.other] : null,
+    c.investIn || c.investOut ? ["Investments (out − in)", c.investOut - c.investIn] : null,
+    S.bills.length ? ["Bills still to pay", -c.billsLeft] : null,
+    c.goalsOut ? [c.toGoals > c.reserve ? "Put toward goals" : `Kept for goals (${S.settings.goalPct}%)`, -c.goalsOut] : null,
+    ["Spent", -c.spent],
+  ].filter(Boolean);
   out.push(h("section", { class: "hero", "aria-label": "Safe to spend" },
     h("span", { class: "label" }, isCur ? "Safe to spend this month" : `Left over in ${monthName(m, { month: "long" })}`),
     h("span", { class: "big" + (c.safe < 0 ? " neg" : "") }, money(c.safe)),
     isCur ? h("span", { class: "perday" }, c.safe > 0 ? [h("b", null, money(perDay)), ` a day for the next ${daysLeft} day${daysLeft > 1 ? "s" : ""}`] : "You're over for this month. Hold off on extras until next pay.") : null,
-    h("div", { class: "math" },
-      h("div", null, h("span", null, `Pay for ${monthName(c.paidFor, { month: "long" })} hours`), h("span", null, "+" + money(c.pay))),
-      h("div", null, h("span", null, "Tips"), h("span", null, "+" + money(c.tips))),
-      h("div", null, h("span", null, "Bills still to pay"), h("span", null, "−" + money(c.billsLeft))),
-      h("div", null, h("span", null, c.toGoals > c.reserve ? "Put toward goals" : `Kept for goals (${S.settings.goalPct}%)`), h("span", null, "−" + money(c.goalsOut))),
-      h("div", null, h("span", null, "Spent"), h("span", null, "−" + money(c.spent))))));
+    h("div", { class: "math" }, rows.map(([l, v]) => h("div", null, h("span", null, l), h("span", null, (v < 0 ? "−" : "+") + money(Math.abs(v))))))));
 
   out.push(addPanel());
   out.push(payPanel(m));
-  out.push(logPanel(c.inMonth));
+  out.push(logPanel(c));
   return out;
 }
+
+const TYPES = [["spend", "Spent"], ["tip", "Tips"], ["income", "Income"], ["invest", "Invest"], ["goal", "Goal"]];
+const accounts = () => [...new Set(["CFI", ...Object.keys(S.invest), ...S.entries.filter(e => e.type === "invest").map(e => e.account)])].filter(Boolean);
+const isIn = e => e.type === "tip" || e.type === "income" || (e.type === "invest" && e.dir === "out");
+const entryColor = e => ({ spend: "var(--spend)", tip: "var(--tip)", income: "var(--tip)", invest: "var(--muted)", goal: "var(--cedar)" })[e.type];
+function entryName(e) {
+  if (e.type === "spend") return e.cat;
+  if (e.type === "tip") return "Tips";
+  if (e.type === "income") return `Income · ${e.kind || "Other"}`;
+  if (e.type === "invest") return `${e.account} · ${e.dir === "in" ? "put in" : "took out"}`;
+  return S.goals.find(g => g.id === e.goal)?.name || "Deleted goal";
+}
+function chipGroup(options, selected, onPick) {
+  const box = h("div", { class: "chips" });
+  for (const [v, l] of options) {
+    const b = h("button", { type: "button", "aria-pressed": String(v === selected) }, l);
+    b.onclick = () => { box.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); onPick(v); };
+    box.append(b);
+  }
+  return box;
+}
+// Type-specific fields; writes picks into v (ui for the add form, a draft copy in the editor).
+function detailFields(type, v, onChange) {
+  if (type === "spend") {
+    const one = h("button", { type: "button", class: "toggle", "aria-pressed": String(!!v.oneoff) }, "One-off, not everyday");
+    one.onclick = () => { v.oneoff = !v.oneoff; one.setAttribute("aria-pressed", String(v.oneoff)); };
+    return [chipGroup(CATS.map(c => [c, c]), v.cat, x => v.cat = x), one];
+  }
+  if (type === "income") return [chipGroup(INCOME_KINDS.map(k => [k, k]), v.kind, x => v.kind = x)];
+  if (type === "invest") {
+    const acc = h("input", { type: "text", maxlength: "30", value: v.account || "", placeholder: "Account, e.g. CFI", "aria-label": "Account" });
+    acc.oninput = () => { v.account = acc.value.trim(); onChange(); };
+    const accChips = chipGroup(accounts().map(a => [a, a]), v.account, x => { v.account = x; acc.value = x; onChange(); });
+    return [chipGroup([["in", "Put in"], ["out", "Took out"]], v.dir, x => v.dir = x), accChips, acc];
+  }
+  if (type === "goal") {
+    if (!S.goals.some(g => g.id === v.goal)) v.goal = (currentGoal() || S.goals[0])?.id || null;
+    if (!S.goals.length) return [h("p", { class: "hint" }, "Add a goal in the Goals tab first.")];
+    return [chipGroup(S.goals.map(g => [g.id, g.name]), v.goal, x => { v.goal = x; onChange(); })];
+  }
+  return [];
+}
+function buildEntry(type, amount, date, note, v, base = {}) {
+  const e = { id: base.id || uid(), type, amount: round2(amount), date, note: note || "", ts: base.ts || Date.now() };
+  if (type === "spend") { e.cat = v.cat; if (v.oneoff) e.oneoff = true; }
+  if (type === "income") e.kind = v.kind || "Other";
+  if (type === "invest") { e.dir = v.dir || "in"; e.account = v.account || "CFI"; }
+  if (type === "goal") e.goal = v.goal;
+  return e;
+}
+const entryOk = (type, amount, v) => amount > 0 && (type !== "goal" || !!v.goal) && (type !== "invest" || !!v.account);
 
 function addPanel() {
   const amount = h("input", { id: "amount", class: "amount", type: "number", inputmode: "decimal", min: "0", step: "0.01", placeholder: "$0.00", "aria-label": "Amount" });
   const date = h("input", { id: "date", type: "date", value: defaultDate(), "aria-label": "Date" });
   const note = h("input", { id: "note", type: "text", maxlength: "80", placeholder: "Note (optional)", "aria-label": "Note" });
   const addBtn = h("button", { class: "btn", disabled: true }, "Add");
-  const validate = () => { addBtn.disabled = !(parseFloat(amount.value) > 0) || (ui.type === "goal" && !ui.goal); };
+  const validate = () => { addBtn.disabled = !entryOk(ui.type, parseFloat(amount.value), ui); };
   amount.oninput = validate;
 
-  const seg = h("div", { class: "seg", role: "group", "aria-label": "Entry type" },
-    [["spend", "Spent"], ["tip", "Tips"], ["goal", "To a goal"]].map(([t, l]) =>
-      h("button", { "aria-pressed": String(ui.type === t), onclick: () => { ui.type = t; const keep = [amount.value, note.value, date.value]; render(); const a = document.getElementById("amount"); [a.value, document.getElementById("note").value, document.getElementById("date").value] = keep; a.dispatchEvent(new Event("input")); } }, l)));
-
-  let chips = null;
-  if (ui.type !== "tip") {
-    if (ui.type === "goal" && !S.goals.some(g => g.id === ui.goal)) ui.goal = (currentGoal() || S.goals[0])?.id || null;
-    const opts = ui.type === "spend" ? CATS.map(c => [c, c]) : S.goals.map(g => [g.id, g.name]);
-    chips = h("div", { class: "chips" }, opts.map(([v, l]) => {
-      const b = h("button", { "aria-pressed": String(ui.type === "spend" ? ui.cat === v : ui.goal === v) }, l);
-      b.onclick = () => { if (ui.type === "spend") ui.cat = v; else ui.goal = v; chips.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); validate(); };
-      return b;
-    }));
-    if (ui.type === "goal" && !opts.length) chips = h("p", { class: "hint" }, "Add a goal in the Goals tab first.");
-  }
+  const seg = h("div", { class: "seg seg5", role: "group", "aria-label": "Entry type" },
+    TYPES.map(([t, l]) => h("button", { "aria-pressed": String(ui.type === t), onclick: () => {
+      ui.type = t; const keep = [amount.value, note.value, date.value]; render();
+      const a = document.getElementById("amount");
+      [a.value, document.getElementById("note").value, document.getElementById("date").value] = keep;
+      a.dispatchEvent(new Event("input"));
+    } }, l)));
 
   addBtn.onclick = () => {
-    const v = parseFloat(amount.value); if (!(v > 0)) return;
-    addEntry({ type: ui.type, amount: v, date: date.value || defaultDate(), note: note.value.trim(), cat: ui.cat, goal: ui.goal });
+    const v = parseFloat(amount.value);
+    if (!entryOk(ui.type, v, ui)) return;
+    const entry = buildEntry(ui.type, v, date.value || defaultDate(), note.value.trim(), ui);
+    ui.oneoff = false;
+    addEntry(entry);
   };
+  const t = S.settings.transport;
   const quick = ui.type === "spend" ? h("div", { class: "quick" },
-    h("button", { onclick: () => addEntry({ type: "spend", amount: S.settings.transport, cat: "Transport", note: "Daily transport", date: date.value || defaultDate() }) }, `+ Transport ${money(S.settings.transport)}`)) : null;
+    h("button", { onclick: () => addEntry(buildEntry("spend", t, date.value || defaultDate(), "Transport", { cat: "Transport" })) }, `+ Transport ${money(t)}`),
+    h("button", { onclick: () => addEntry(buildEntry("spend", t * 2, date.value || defaultDate(), "Transport, round trip", { cat: "Transport" })) }, `+ Round trip ${money(round2(t * 2))}`)) : null;
   setTimeout(validate);
-  return h("section", { class: "panel", "aria-label": "Add" }, seg, h("div", { class: "row" }, h("div", { style: "flex:1;min-width:0" }, amount), h("div", { style: "flex:1.15;min-width:0" }, date)), chips, note, addBtn, quick);
+  return h("section", { class: "panel", "aria-label": "Add" }, seg,
+    h("div", { class: "row" }, h("div", { style: "flex:1;min-width:0" }, amount), h("div", { style: "flex:1.15;min-width:0" }, date)),
+    detailFields(ui.type, ui, validate), note, addBtn, quick);
 }
-function addEntry(e) {
-  const entry = { id: uid(), type: e.type, amount: round2(e.amount), date: e.date, note: e.note || "", ts: Date.now() };
-  if (e.type === "spend") entry.cat = e.cat;
-  if (e.type === "goal") entry.goal = e.goal;
+function addEntry(entry) {
   S.entries.push(entry); save();
   ui.month = monthOf(entry.date);
   render();
-  toast(`Added ${money(entry.amount)}${e.type === "tip" ? " in tips" : e.type === "goal" ? " to " + (S.goals.find(g => g.id === e.goal)?.name || "goal") : " · " + e.cat}`);
+  toast(`Added ${money(entry.amount)} · ${entryName(entry)}`);
 }
 
 function payPanel(m) {
@@ -183,27 +266,66 @@ function payPanel(m) {
       h("label", { class: "f" }, `${monthName(m, { month: "long" })} hours so far`, hoursInput(m), h("small", null, `Paid ${monthName(shiftMonth(m, 1), { month: "short" })} 1–5 · ${money((S.hours[m] || 0) * S.settings.rate)}`))));
 }
 
-function logPanel(list) {
+function entryEditor(e) {
+  const v = { cat: e.cat || "Food", oneoff: !!e.oneoff, kind: e.kind || "Loan", dir: e.dir || "in", account: e.account || "CFI", goal: e.goal || null };
+  let type = e.type;
+  const amount = h("input", { class: "num", type: "number", inputmode: "decimal", min: "0", step: "0.01", value: e.amount, "aria-label": "Amount" });
+  const date = h("input", { type: "date", value: e.date, "aria-label": "Date" });
+  const note = h("input", { type: "text", maxlength: "80", value: e.note || "", placeholder: "Note (optional)", "aria-label": "Note" });
+  const details = h("div", { style: "display:flex;flex-direction:column;gap:10px" });
+  const draw = () => details.replaceChildren(...detailFields(type, v, () => {}));
+  const seg = chipGroup(TYPES, type, x => { type = x; draw(); });
+  draw();
+  const del = twoTap(h("button", { class: "btn small ghost del" }, "Delete"), "Delete", "Tap again to delete", () => {
+    S.entries = S.entries.filter(x => x.id !== e.id); ui.editEntry = null; save(); render(); toast("Entry deleted");
+  });
+  return h("div", { class: "editor", style: "margin-block:6px" },
+    seg,
+    h("div", { class: "row" }, h("div", { style: "flex:1;min-width:0" }, amount), h("div", { style: "flex:1.15;min-width:0" }, date)),
+    details, note,
+    h("div", { class: "actions" },
+      h("button", { class: "btn small", onclick: () => {
+        const a = parseFloat(amount.value);
+        if (!entryOk(type, a, v) || !date.value) { toast("Check the amount, date and details."); return; }
+        const i = S.entries.findIndex(x => x.id === e.id);
+        S.entries[i] = buildEntry(type, a, date.value, note.value.trim(), v, e);
+        ui.editEntry = null; save(); render(); toast("Entry updated");
+      } }, "Save"),
+      h("button", { class: "btn small ghost", onclick: () => { ui.editEntry = null; render(); } }, "Cancel"), del));
+}
+
+function logPanel(c) {
+  const list = c.inMonth;
   const items = [...list].sort((a, b) => b.date.localeCompare(a.date) || b.ts - a.ts);
   const box = h("div", { class: "log" });
   if (!items.length) box.append(h("p", { class: "empty" }, "Nothing logged this month yet."));
   let day = null;
   for (const e of items) {
     if (e.date !== day) { day = e.date; box.append(h("div", { class: "day" }, new Date(e.date + "T12:00").toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" }))); }
-    const color = e.type === "spend" ? "var(--spend)" : e.type === "tip" ? "var(--tip)" : "var(--cedar)";
-    const name = e.type === "spend" ? e.cat : e.type === "tip" ? "Tips" : (S.goals.find(g => g.id === e.goal)?.name || "Deleted goal");
-    const del = twoTap(h("button", { class: "del", "aria-label": "Delete entry" }, "Delete"), "Delete", "Sure?", () => { S.entries = S.entries.filter(x => x.id !== e.id); save(); render(); toast("Entry deleted"); });
+    if (ui.editEntry === e.id) { box.append(entryEditor(e)); continue; }
     box.append(h("div", { class: "item" },
-      h("span", { class: "dot", style: `background:${color}` }),
-      h("span", { class: "what" }, name, e.note ? h("small", null, e.note) : null),
-      h("span", { class: "v" }, (e.type === "tip" ? "+" : "−") + money(e.amount)),
-      del));
+      h("span", { class: "dot", style: `background:${entryColor(e)}` }),
+      h("span", { class: "what" }, entryName(e), e.oneoff ? h("span", { class: "tag" }, "one-off") : null, e.note ? h("small", null, e.note) : null),
+      h("span", { class: "v" }, (isIn(e) ? "+" : "−") + money(e.amount)),
+      h("button", { class: "del", "aria-label": "Edit entry", onclick: () => { ui.editEntry = e.id; render(); } }, "Edit")));
   }
+  const spends = list.filter(e => e.type === "spend");
   const byCat = {};
-  list.filter(e => e.type === "spend").forEach(e => byCat[e.cat] = (byCat[e.cat] || 0) + e.amount);
+  spends.filter(e => !e.oneoff).forEach(e => byCat[e.cat] = (byCat[e.cat] || 0) + e.amount);
   const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
-  const catLine = cats.length ? h("p", { class: "hint" }, cats.map(([c, v]) => `${c} ${money(v)}`).join(" · ")) : null;
-  return h("section", { class: "panel", "aria-label": "Log" }, h("h2", null, "This month"), catLine, box);
+  let pace = null;
+  if (spends.length) {
+    const first = spends.map(e => e.date).sort()[0];
+    const isCur = monthOf(first) === thisMonth();
+    const last = isCur ? new Date() : new Date(+first.slice(0, 4), +first.slice(5, 7), 0);
+    const days = Math.max(1, Math.round((new Date(last.getFullYear(), last.getMonth(), last.getDate()) - new Date(first + "T00:00")) / 864e5) + 1);
+    const oneoffs = c.spent - c.everyday;
+    pace = h("div", { class: "pace" },
+      h("div", null, h("small", null, "Everyday spending"), h("b", null, money(c.everyday)), h("small", null, `${money(c.everyday / days)} a day`)),
+      h("div", null, h("small", null, "One-offs"), h("b", null, money(oneoffs)), h("small", null, `${spends.filter(e => e.oneoff).length} items`)));
+  }
+  const catLine = cats.length ? h("p", { class: "hint" }, "Everyday: " + cats.map(([k, v]) => `${k} ${money(v)}`).join(" · ")) : null;
+  return h("section", { class: "panel", "aria-label": "Log" }, h("h2", null, "This month"), pace, catLine, box);
 }
 
 /* ---------- Goals ---------- */
@@ -232,7 +354,33 @@ function viewGoals() {
     h("p", { class: "hint" }, "Goals are paid in order, top first. Put money toward one from the Today tab with “To a goal”."),
     h("section", { class: "panel" }, list,
       ui.editGoal ? null : h("button", { class: "btn ghost", onclick: () => { ui.editGoal = "new"; render(); } }, "+ Add a goal")),
+    investPanel(),
   ];
+}
+function investPanel() {
+  const accs = accounts().filter(a => S.invest[a] || S.entries.some(e => e.type === "invest" && e.account === a));
+  if (!accs.length) return null;
+  return h("section", { class: "panel", "aria-label": "Investments" },
+    h("h2", null, "Investments"),
+    h("p", { class: "hint" }, "Log money you move in or out with “Invest” on the Today tab. Update the current value whenever you check the account."),
+    accs.map(a => {
+      const es = S.entries.filter(e => e.type === "invest" && e.account === a);
+      const put = es.filter(e => e.dir === "in").reduce((s, e) => s + e.amount, 0);
+      const took = es.filter(e => e.dir === "out").reduce((s, e) => s + e.amount, 0);
+      const val = S.invest[a]?.value;
+      const result = val == null ? null : val + took - put;
+      const input = h("input", { class: "num", type: "number", inputmode: "decimal", min: "0", step: "0.01", value: val ?? "", placeholder: "Enter value",
+        onchange: ev => { const x = parseFloat(ev.target.value); S.invest[a] = isNaN(x) || x < 0 ? {} : { value: round2(x), asOf: iso(new Date()) }; save(); render(); } });
+      return h("div", { class: "inv" },
+        h("strong", null, a),
+        h("div", { class: "invgrid" },
+          h("div", null, h("small", null, "Put in"), h("b", null, money(put))),
+          h("div", null, h("small", null, "Taken out"), h("b", null, money(took))),
+          h("div", null, h("small", null, "Still in, net"), h("b", null, money(put - took)))),
+        h("label", { class: "f" }, `Current value${S.invest[a]?.asOf ? " (as of " + S.invest[a].asOf + ")" : ""}`, input),
+        result == null ? null : h("p", { class: "hint", style: `color:${result >= 0 ? "var(--cedar)" : "var(--spend)"}` },
+          `${result >= 0 ? "Up" : "Down"} ${money(Math.abs(result))} overall (value + taken out − put in)`));
+    }));
 }
 function goalEditor(g) {
   const name = h("input", { type: "text", maxlength: "40", value: g.name, placeholder: "e.g. New phone" });
