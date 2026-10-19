@@ -20,7 +20,7 @@ const defaultDate = () => { const d = new Date(); if (d.getHours() < 5) d.setDat
 function defaults() {
   return {
     version: 1,
-    settings: { rate: 2.3, transport: 6.67, goalPct: 30 },
+    settings: { rate: 2.3, transport: 6.67, goalPct: 30, officeBonus: 20 },
     bills: [{ id: uid(), name: "Phone & internet", amount: 67, cat: "Phone & internet" }],
     goals: [
       { id: uid(), name: "Clear the debt", target: 34, start: 0, note: "Last of the $400 loan" },
@@ -66,6 +66,20 @@ if (!S.migrated.includes("2026-10-types")) {
   }
   S.migrated.push("2026-10-types");
 }
+S.days ||= {};
+S.officeBase ||= {};
+S.settings.officeBonus ??= 20;
+// One-time: switch October 2026 from a monthly total to daily logging (190 h through Oct 18, 12 office days Oct 1–16).
+if (!S.migrated.includes("2026-10-days")) {
+  const oct = S.hours["2026-10"];
+  if ((oct === 168 || oct === 217) && !Object.keys(S.days).some(d => d.startsWith("2026-10"))) {
+    S.hours["2026-10"] = 190;
+    S.officeBase["2026-10"] = 12;
+    S.days["2026-10-19"] = { hours: 13, office: true };
+    S.days["2026-10-20"] = { hours: 14, office: true };
+  }
+  S.migrated.push("2026-10-days");
+}
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
   catch { toast("Couldn't save on this phone. Free up some storage and try again."); }
@@ -73,7 +87,7 @@ function save() {
 save();
 try { navigator.storage?.persist?.(); } catch {}
 
-const ui = { tab: "today", month: thisMonth(), type: "spend", cat: "Food", goal: null, oneoff: false, kind: "Loan", dir: "in", account: "CFI", editGoal: null, editRem: null, editBill: null, editEntry: null, editInvest: null };
+const ui = { tab: "today", month: thisMonth(), type: "spend", cat: "Food", goal: null, oneoff: false, kind: "Loan", dir: "in", account: "CFI", editGoal: null, editRem: null, editBill: null, editEntry: null, editInvest: null, workDate: null };
 
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
@@ -103,7 +117,7 @@ function calc(m) {
   const inMonth = S.entries.filter(e => monthOf(e.date) === m);
   const sum = t => inMonth.filter(e => e.type === t).reduce((s, e) => s + e.amount, 0);
   const paidFor = shiftMonth(m, -1);
-  const pay = (S.hours[paidFor] || 0) * S.settings.rate;
+  const pay = monthPay(paidFor);
   const tips = sum("tip"), spent = sum("spend"), toGoals = sum("goal"), other = sum("income");
   const investIn = inMonth.filter(e => e.type === "invest" && e.dir === "in").reduce((s, e) => s + e.amount, 0);
   const investOut = inMonth.filter(e => e.type === "invest" && e.dir === "out").reduce((s, e) => s + e.amount, 0);
@@ -145,7 +159,7 @@ function viewToday() {
   const daysLeft = dim - now.getDate() + 1;
   const perDay = c.safe / daysLeft;
   const rows = [
-    [`Pay for ${monthName(c.paidFor, { month: "long" })} hours`, c.pay],
+    [`Pay for ${monthName(c.paidFor, { month: "long" })} work`, c.pay],
     ["Tips", c.tips],
     c.other ? ["Other income", c.other] : null,
     c.investIn || c.investOut ? ["Investments (out − in)", c.investOut - c.investIn] : null,
@@ -255,15 +269,70 @@ function addEntry(entry) {
   toast(`Added ${money(entry.amount)} · ${entryName(entry)}`);
 }
 
+const monthDays = m => Object.entries(S.days).filter(([d]) => monthOf(d) === m).sort((a, b) => b[0].localeCompare(a[0]));
+const monthHours = m => (S.hours[m] || 0) + monthDays(m).reduce((s, [, d]) => s + (d.hours || 0), 0);
+const monthOffice = m => (S.officeBase[m] || 0) + monthDays(m).filter(([, d]) => d.office).length;
+const monthPay = m => monthHours(m) * S.settings.rate + monthOffice(m) * (S.settings.officeBonus || 0);
+const isWeekday = dateStr => { const g = new Date(dateStr + "T12:00").getDay(); return g > 0 && g < 6; };
+const shortDay = d => new Date(d + "T12:00").toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+
 function payPanel(m) {
-  const prev = shiftMonth(m, -1);
-  const hoursInput = (key) => h("input", { class: "num", type: "number", inputmode: "decimal", min: "0", step: "0.5", placeholder: "0", value: S.hours[key] ?? "",
-    onchange: ev => { const v = parseFloat(ev.target.value); if (isNaN(v) || v <= 0) delete S.hours[key]; else S.hours[key] = v; save(); render(); } });
-  return h("section", { class: "panel", "aria-label": "Hours and pay" },
-    h("h2", null, "Hours & pay"),
-    h("div", { class: "paygrid" },
-      h("label", { class: "f" }, `${monthName(prev, { month: "long" })} hours`, hoursInput(prev), h("small", null, `Paid ${monthName(m, { month: "short" })} 1–5 · ${money((S.hours[prev] || 0) * S.settings.rate)}`)),
-      h("label", { class: "f" }, `${monthName(m, { month: "long" })} hours so far`, hoursInput(m), h("small", null, `Paid ${monthName(shiftMonth(m, 1), { month: "short" })} 1–5 · ${money((S.hours[m] || 0) * S.settings.rate)}`))));
+  const prev = shiftMonth(m, -1), next = shiftMonth(m, 1);
+  const bonus = S.settings.officeBonus || 0;
+  const summary = (k) => {
+    const hrs = monthHours(k), off = monthOffice(k);
+    return `${round2(hrs)} h${bonus && off ? ` · ${off} office day${off === 1 ? "" : "s"}` : ""} = ${money(monthPay(k))}`;
+  };
+
+  const startDate = ui.workDate && monthOf(ui.workDate) === m ? ui.workDate : (m === thisMonth() ? defaultDate() : `${m}-01`);
+  const existing = S.days[startDate];
+  const date = h("input", { type: "date", value: startDate, "aria-label": "Work day" });
+  const hours = h("input", { class: "num", type: "number", inputmode: "decimal", min: "0", max: "24", step: "0.5", placeholder: "Hours", value: existing?.hours ?? "", "aria-label": "Hours worked" });
+  let office = existing ? !!existing.office : isWeekday(startDate);
+  const officeBtn = h("button", { type: "button", class: "toggle", "aria-pressed": String(office) }, `Office day +${money(bonus)}`);
+  officeBtn.onclick = () => { office = !office; officeBtn.setAttribute("aria-pressed", String(office)); };
+  date.onchange = () => {
+    const d = S.days[date.value];
+    hours.value = d?.hours ?? "";
+    office = d ? !!d.office : isWeekday(date.value);
+    officeBtn.setAttribute("aria-pressed", String(office));
+  };
+  const saveBtn = h("button", { class: "btn small", onclick: () => {
+    const v = parseFloat(hours.value);
+    if (!date.value || isNaN(v) || v < 0 || v > 24) { toast("Enter the date and 0–24 hours."); return; }
+    S.days[date.value] = { hours: round2(v), office: bonus ? office : false };
+    ui.workDate = null; save(); ui.month = monthOf(date.value); render();
+    toast(`Saved ${v} h for ${shortDay(date.value)}`);
+  } }, existing ? "Update day" : "Save day");
+
+  const list = h("div", { class: "log" });
+  for (const [d, x] of monthDays(m)) {
+    const del = twoTap(h("button", { class: "del", "aria-label": "Delete day" }, "Delete"), "Delete", "Sure?", () => { delete S.days[d]; save(); render(); });
+    list.append(h("div", { class: "item", style: "grid-template-columns:1fr auto auto auto" },
+      h("span", { class: "what" }, shortDay(d), x.office ? h("span", { class: "tag" }, "office") : null),
+      h("span", { class: "v" }, `${x.hours} h`),
+      h("button", { class: "del", onclick: () => { ui.workDate = d; render(); document.querySelector('[aria-label="Hours worked"]')?.focus(); } }, "Edit"),
+      del));
+  }
+
+  const baseHours = h("input", { class: "num", type: "number", inputmode: "decimal", min: "0", step: "0.5", value: S.hours[m] ?? "", placeholder: "0",
+    onchange: ev => { const v = parseFloat(ev.target.value); if (isNaN(v) || v <= 0) delete S.hours[m]; else S.hours[m] = round2(v); save(); render(); } });
+  const baseOffice = h("input", { class: "num", type: "number", inputmode: "numeric", min: "0", step: "1", value: S.officeBase[m] ?? "", placeholder: "0",
+    onchange: ev => { const v = parseInt(ev.target.value, 10); if (isNaN(v) || v <= 0) delete S.officeBase[m]; else S.officeBase[m] = v; save(); render(); } });
+
+  return h("section", { class: "panel", "aria-label": "Work and pay" },
+    h("h2", null, "Work & pay"),
+    h("div", { class: "pace" },
+      h("div", null, h("small", null, `${monthName(m, { month: "long" })} so far`), h("b", null, money(monthPay(m))), h("small", null, `${summary(m).split(" = ")[0]} · paid ${monthName(next, { month: "short" })} 1–5`)),
+      h("div", null, h("small", null, `${monthName(prev, { month: "long" })} (paid ${monthName(m, { month: "short" })} 1–5)`), h("b", null, money(monthPay(prev))), h("small", null, summary(prev).split(" = ")[0]))),
+    h("div", { class: "row" }, h("div", { style: "flex:1.2;min-width:0" }, date), h("div", { style: "flex:1;min-width:0" }, hours)),
+    h("div", { class: "actions", style: "align-items:center" }, bonus ? officeBtn : null, saveBtn),
+    monthDays(m).length ? list : null,
+    h("details", null,
+      h("summary", null, "Hours from before daily logging"),
+      h("div", { class: "row", style: "margin-top:10px" },
+        h("label", { class: "f" }, "Hours", baseHours),
+        bonus ? h("label", { class: "f" }, "Office days", baseOffice) : null)));
 }
 
 function entryEditor(e) {
@@ -415,6 +484,7 @@ function viewMore() {
     h("div", { class: "row" },
       numField("Hourly rate ($)", () => s.rate, v => s.rate = v),
       numField("Daily transport ($)", () => s.transport, v => s.transport = v)),
+    h("div", { class: "row" }, numField("Office day bonus ($)", () => s.officeBonus || 0, v => s.officeBonus = v)),
     h("div", { class: "row" }, numField("Keep for goals (% of income)", () => s.goalPct, v => s.goalPct = Math.min(v, 100), "1")),
     h("p", { class: "hint" }, "This share of each month's pay and tips is held back from “safe to spend” for your goals."));
 

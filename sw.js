@@ -1,5 +1,5 @@
 // Bump VERSION on every release so phones pick up the new files.
-const VERSION = "mm-2";
+const VERSION = "mm-3";
 const SHELL = ["./", "index.html", "app.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png"];
 
 self.addEventListener("install", e => {
